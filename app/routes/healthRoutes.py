@@ -11,11 +11,8 @@ router = APIRouter()
 async def health_check(session: AsyncSession = Depends(get_db)):
     try:
         # Check database connectivity
-        result = await session.execute(select(User).limit(1))
-        user_exists = result.scalar_one_or_none() is not None
-        if not user_exists:
-            raise HTTPException(status_code=500, detail="Database not reachable")
+        result = await session.execute(select(1))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database check failed: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Database check failed: {str(e)}")
 
     return {"status": "healthy", "database": "reachable"}
