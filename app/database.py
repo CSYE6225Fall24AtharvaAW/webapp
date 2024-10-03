@@ -4,8 +4,11 @@ from fastapi import Depends
 from sqlalchemy.ext.declarative import declarative_base
 from typing import AsyncGenerator
 import os
+from dotenv import load_dotenv
 
-DATABASE_URL = os.getenv("DATABASE_URL")  # E.g., "postgresql+asyncpg://user:password@localhost/dbname"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL") 
 
 Base = declarative_base()
 engine = create_async_engine(DATABASE_URL, echo=True)
