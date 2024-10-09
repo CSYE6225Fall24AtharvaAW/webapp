@@ -23,5 +23,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt  # Ensure you have this file in your repo
 
+    - name: Testing
+      run: pytest tests/
+      
     - name: Always Succeed
       run: echo "Installed"
