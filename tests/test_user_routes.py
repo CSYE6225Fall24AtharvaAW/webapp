@@ -8,16 +8,16 @@ from app.database import get_db
 from tests.test_settings import TEST_DATABASE_URL
 from app.models.user import Base
 
-@pytest.fixture
-async def client(async_session: AsyncSession):
-    """Create a test client for the FastAPI app."""
-    async def override_get_db():
-        yield async_session
+# @pytest.fixture
+# async def client(async_session: AsyncSession):
+#     """Create a test client for the FastAPI app."""
+#     async def override_get_db():
+#         yield async_session
 
-    app.dependency_overrides[get_db] = override_get_db
+#     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
+#     async with AsyncClient(app=app, base_url="http://test") as client:
+#         yield client
 
 @pytest.mark.asyncio
 async def test_create_user(client):
