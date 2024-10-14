@@ -8,7 +8,7 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup_event():
     print("Starting up...")
-    await bootstrap_database()
+    await bootstrap_database
     print("Database bootstrap completed.")
 
 # Include the routes
