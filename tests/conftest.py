@@ -2,8 +2,10 @@ import pytest
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from app.models.user import Base  # Adjust this import to point to your actual models
-from tests.test_settings import TEST_DATABASE_URL  # Adjust this import for your actual database URL
+from app.models.user import Base  
+import os
+
+TEST_DATABASE_URL = os.getenv("DATABASE_URL")
 
 @pytest.fixture(scope="session")
 def event_loop():

@@ -13,16 +13,11 @@ jobs:
       postgres:
         image: postgres:13
         env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         ports:
           - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U test_user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
     - name: Checkout Code
@@ -40,14 +35,14 @@ jobs:
         pip install asyncpg
 
     - name: Set Database Environment Variable
+      run: echo "DATABASE_URL=postgresql+asyncpg://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}"
       env:
-        DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
-      run: echo "Database URL set for testing"
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     - name: Run Tests
       run: pytest tests/
       env:
-        DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     - name: Always Succeed
       run: echo "Installed"
