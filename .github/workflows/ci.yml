@@ -1,4 +1,4 @@
-name: Pytests CI
+name: CI with Secrets
 
 on:
   pull_request:
@@ -13,41 +13,39 @@ jobs:
       postgres:
         image: postgres:13
         env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U test_user"
+          --health-cmd "pg_isready -U ${{ secrets.POSTGRES_USER }}"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install asyncpg
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Set Database Environment Variable
-      env:
-        DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
-      run: echo "Database URL set for testing"
+      - name: Set Database Environment Variable
+        run: echo "DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
 
-    - name: Run Tests
-      run: pytest tests/
-      env:
-        DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
+      - name: Run Tests
+        run: pytest
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
 
-    - name: Always Succeed
-      run: echo "Installed"
+      - name: Clean up
+        if: always()
+        run: echo "Test run complete"
