@@ -35,14 +35,10 @@ jobs:
         pip install asyncpg
 
     - name: Set Database Environment Variable
-      run: echo "DATABASE_URL=postgresql+asyncpg://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}"
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: echo "DATABASE_URL=postgresql+asyncpg://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
 
     - name: Run Tests
       run: pytest tests/
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     - name: Always Succeed
       run: echo "Installed"
