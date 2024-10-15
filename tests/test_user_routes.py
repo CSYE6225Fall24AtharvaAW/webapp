@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app  # Import your FastAPI app
 from app.database import get_db
-from tests.test_settings import TEST_DATABASE_URL
 from app.models.user import Base
 
 @pytest.fixture
