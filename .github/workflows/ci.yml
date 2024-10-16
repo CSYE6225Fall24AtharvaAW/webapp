@@ -1,4 +1,4 @@
-name: CI with Secrets
+name: CI - integration tests
 
 on:
   pull_request:
