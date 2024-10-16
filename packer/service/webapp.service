@@ -3,9 +3,10 @@ Description=FastAPI web application
 After=network.target
 
 [Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/webapp
-ExecStart=/home/ubuntu/webapp/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+User=csye6225
+Group=csye6225
+WorkingDirectory=/home/csye6225/webapp
+ExecStart=/home/csye6225/webapp/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 
 [Install]

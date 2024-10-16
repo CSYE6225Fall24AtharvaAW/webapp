@@ -71,20 +71,22 @@ build {
 
   provisioner "shell" {
     inline = [
-        "sudo mkdir -p /home/ubuntu/webapp/app",
-        "sudo chown -R ubuntu:ubuntu /home/ubuntu/webapp",
-        "sudo chmod -R 755 /home/ubuntu/webapp"
+        "sudo groupadd -f csye6225",
+        "sudo useradd -g csye6225 -M -s /usr/sbin/nologin csye6225",
+        "sudo mkdir -p /home/csye6225/webapp/app",
+        "sudo chown -R csye6225:csye6225 /home/csye6225/webapp",
+        "sudo chmod -R 755 /home/csye6225/webapp"
     ]
   }
 
   provisioner "file" {
     source      = "./app/"
-    destination = "/home/ubuntu/webapp/app"
+    destination = "/home/csye6225/webapp/app"
   }
 
   provisioner "file" {
     source      = "./requirements.txt"
-    destination = "/home/ubuntu/webapp/requirements.txt"
+    destination = "/home/csye6225/webapp/requirements.txt"
   }
 
   provisioner "file" {
