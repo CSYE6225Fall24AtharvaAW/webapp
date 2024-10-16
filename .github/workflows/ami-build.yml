@@ -1,0 +1,84 @@
+name: CI and Packer Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Database Environment Variable
+        run: echo "DATABASE_URL=postgresql+asyncpg://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
+
+      - name: Run Integration Tests
+        run: pytest tests/
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Clean up
+        if: always()
+        run: echo "Test run complete"
+
+  packer-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up HashiCorp Packer
+        uses: hashicorp/setup-packer@v1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Packer Build Custom AMI
+        run: |
+          packer init packer/webapp.pkr.hcl
+          packer build -var "aws_profile=${{ secrets.AWS_PROFILE }}" \
+                       -var 'ami_users=["${{ secrets.AMI_USERS }}"]' \
+                       -var "DB_USERNAME=${{ secrets.POSTGRES_USER }}" \
+                       -var "DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+                       -var "DB_HOST=localhost" \
+                       -var "DB_PORT=5432" \
+                       -var "DB_NAME=${{ secrets.POSTGRES_DB }}" \
+                       packer/webapp.pkr.hcl

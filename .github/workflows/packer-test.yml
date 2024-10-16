@@ -1,0 +1,23 @@
+name: Packer Test
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up HashiCorp Packer
+        uses: hashicorp/setup-packer@v1
+
+      - name: Run Packer FMT
+        run: packer fmt -check .
+
+      - name: Run Packer Validate
+        run: packer validate packer/webapp.pkr.hcl
