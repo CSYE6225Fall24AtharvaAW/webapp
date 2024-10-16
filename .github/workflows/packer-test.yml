@@ -18,6 +18,9 @@ jobs:
 
       - name: Run Packer FMT
         run: packer fmt -check .
+      
+      - name: Init Packer
+        run: packer init packer/webapp.pkr.hcl
 
       - name: Run Packer Validate
         run: packer validate packer/webapp.pkr.hcl
