@@ -23,4 +23,13 @@ jobs:
         run: packer init packer/webapp.pkr.hcl
 
       - name: Run Packer Validate
-        run: packer validate packer/webapp.pkr.hcl
+        run: |
+            packer init packer/webapp.pkr.hcl
+            packer build -var "aws_profile=${{ secrets.AWS_PROFILE }}" \
+                       -var 'ami_users=["${{ secrets.AMI_USERS }}"]' \
+                       -var "DB_USERNAME=${{ secrets.POSTGRES_USER }}" \
+                       -var "DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+                       -var "DB_HOST=localhost" \
+                       -var "DB_PORT=5432" \
+                       -var "DB_NAME=${{ secrets.POSTGRES_DB }}" \
+                       packer/webapp.pkr.hcl
