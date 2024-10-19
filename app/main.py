@@ -12,5 +12,5 @@ async def startup_event():
     print("Database bootstrap completed.")
 
 # Include the routes
-app.include_router(health_router)
-app.include_router(user_router, prefix="/users", tags=["Users"])
+app.include_router(health_router, prefix="/v2")
+app.include_router(user_router, prefix="/v2/users", tags=["Users"])
