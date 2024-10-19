@@ -20,7 +20,7 @@ async def client(async_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_create_user(client):
-    response = await client.post("/users/", json={
+    response = await client.post("/v2/users/", json={
         "email": "test@example.com",
         "password": "testpassword",
         "first_name": "Test",
@@ -31,13 +31,13 @@ async def test_create_user(client):
 
 @pytest.mark.asyncio
 async def test_get_user(client):
-    response = await client.get("/users/1", auth=("test@example.com", "testpassword"))
+    response = await client.get("/v2/users/1", auth=("test@example.com", "testpassword"))
     assert response.status_code == 200
     assert response.json()["email"] == "test@example.com"
 
 @pytest.mark.asyncio
 async def test_update_user(client):
-    response = await client.put("/users/1", json={
+    response = await client.put("/v2/users/1", json={
         "first_name": "Updated",
         "last_name": "User",
         "password": "newpassword"
@@ -48,6 +48,6 @@ async def test_update_user(client):
 
 @pytest.mark.asyncio
 async def test_health_check(client):
-    response = await client.get("/healthz")
+    response = await client.get("/v2/healthz")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
