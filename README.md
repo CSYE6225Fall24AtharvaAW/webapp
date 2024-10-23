@@ -1,4 +1,4 @@
-# Health Check RESTful API
+# RESTful API Application with ami build
 
 This project implements a Health Check RESTful API that monitors the health of a running service instance and checks its connectivity to a PostgreSQL database. The API provides an endpoint to verify the service's status and prevent routing traffic to unhealthy instances.
 
