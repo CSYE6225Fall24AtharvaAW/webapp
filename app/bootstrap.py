@@ -35,6 +35,7 @@ async def create_database():
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        print("created")
 
 async def bootstrap_database():
     try:
