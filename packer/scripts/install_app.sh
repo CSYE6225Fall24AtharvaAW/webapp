@@ -4,8 +4,7 @@
 mkdir -p /home/csye6225/webapp
 cd /home/csye6225/webapp || exit
 
-
-
+touch .env
 
 # Set permissions for .env file
 sudo chmod 644 /home/csye6225/webapp/.env
