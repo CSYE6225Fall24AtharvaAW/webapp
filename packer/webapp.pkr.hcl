@@ -58,8 +58,8 @@ build {
       "sudo groupadd -f csye6225",
       "sudo useradd -g csye6225 -M -s /usr/sbin/nologin csye6225",
       "sudo mkdir -p /home/csye6225/webapp/app",
-      "sudo chown -R ubuntu:csye6225 /home/csye6225/webapp",  // Allow Packer to upload files
-      "sudo chmod -R 775 /home/csye6225/webapp"               // Ensure write permissions for the group
+      "sudo chown -R ubuntu:csye6225 /home/csye6225/webapp", // Allow Packer to upload files
+      "sudo chmod -R 775 /home/csye6225/webapp"              // Ensure write permissions for the group
     ]
   }
 
@@ -82,7 +82,7 @@ build {
   // Install app with environment variables passed as user data
   provisioner "shell" {
 
-    script = "./packer/scripts/install_app.sh"
+    script          = "./packer/scripts/install_app.sh"
     execute_command = "sudo -E {{ .Vars }} bash '{{ .Path }}'"
   }
 
