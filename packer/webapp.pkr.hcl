@@ -21,22 +21,6 @@ variable "ami_users" {
   type = list(string)
 }
 
-variable "DB_USERNAME" {
-    type = string
-}
-variable "DB_PASSWORD" {
-    type = string
-}
-variable "DB_HOST" {
-    type = string
-}
-variable "DB_PORT" {
-    type = string
-}
-variable "DB_NAME" {
-    type = string
-}
-
 packer {
   required_plugins {
     amazon = {
@@ -65,20 +49,21 @@ build {
     script = "./packer/scripts/install_dependencies.sh"
   }
 
+  // Removing the database setup from the EC2 image
+  // No longer provisioning the setup_database.sh script
+
+  // Create user and set permissions
   provisioner "shell" {
-    script = "./packer/scripts/setup_database.sh"
+    inline = [
+      "sudo groupadd -f csye6225",
+      "sudo useradd -g csye6225 -M -s /usr/sbin/nologin csye6225",
+      "sudo mkdir -p /home/csye6225/webapp/app",
+      "sudo chown -R ubuntu:csye6225 /home/csye6225/webapp", // Allow Packer to upload files
+      "sudo chmod -R 775 /home/csye6225/webapp"              // Ensure write permissions for the group
+    ]
   }
 
-  provisioner "shell" {
-  inline = [
-    "sudo groupadd -f csye6225",
-    "sudo useradd -g csye6225 -M -s /usr/sbin/nologin csye6225",
-    "sudo mkdir -p /home/csye6225/webapp/app",
-    "sudo chown -R ubuntu:csye6225 /home/csye6225/webapp",  # Change owner to allow Packer to upload files
-    "sudo chmod -R 775 /home/csye6225/webapp"               # Ensure write permissions for the group
-  ]
-}
-
+  // Copy the web app and other files
   provisioner "file" {
     source      = "./app/"
     destination = "/home/csye6225/webapp/app"
@@ -94,16 +79,10 @@ build {
     destination = "/tmp/webapp.service"
   }
 
+  // Install app with environment variables passed as user data
   provisioner "shell" {
-     environment_vars = [
-      "DB_USERNAME=${var.DB_USERNAME}",
-      "DB_PASSWORD=${var.DB_PASSWORD}",
-      "DB_HOST=${var.DB_HOST}",
-      "DB_PORT=${var.DB_PORT}",
-      "DB_NAME=${var.DB_NAME}"
-    ]
 
-    script = "./packer/scripts/install_app.sh"
+    script          = "./packer/scripts/install_app.sh"
     execute_command = "sudo -E {{ .Vars }} bash '{{ .Path }}'"
   }
 
