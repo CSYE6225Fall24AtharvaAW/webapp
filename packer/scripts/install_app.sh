@@ -4,13 +4,11 @@
 mkdir -p /home/csye6225/webapp
 cd /home/csye6225/webapp || exit
 
-# Create a .env file with database connection details using environment variables
-cat <<EOT > .env
-DATABASE_URL="postgresql+asyncpg://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
-EOT
 
-# Ensure the .env file is created with the correct permissions
-sudo chmod 640 /home/csye6225/webapp/.env
+
+
+# Set permissions for .env file
+sudo chmod 644 /home/csye6225/webapp/.env
 sudo chown csye6225:csye6225 /home/csye6225/webapp/.env
 
 # Install Python3 virtual environment tools
@@ -26,12 +24,8 @@ source venv/bin/activate
 # Update pip to its latest version
 pip install --upgrade pip
 
-# Install FastAPI, Uvicorn, and other dependencies from requirements.txt
-pip install fastapi uvicorn
+# Install FastAPI, Uvicorn and other dependencies from requirements.txt
 pip install -r requirements.txt
 
 # Deactivate the virtual environment
 deactivate
-
-# Ensure all application artifacts are owned by the user `csye6225`
-sudo chown -R csye6225:csye6225 /home/csye6225/webapp
