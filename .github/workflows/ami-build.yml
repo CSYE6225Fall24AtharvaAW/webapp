@@ -73,3 +73,20 @@ jobs:
           packer build -var "aws_profile=${{ secrets.AWS_PROFILE }}" \
                        -var 'ami_users=["${{ secrets.AMI_USERS }}"]' \
                        packer/webapp.pkr.hcl
+      # Add the step to share the AMI with the DEMO account
+      - name: Share AMI with DEMO account
+        run: |
+          echo "Fetching AMI ID..."
+          AMI_ID=$(aws ec2 describe-images --owners self --filters "Name=name,Values=webapp-ami*" --query 'Images[0].ImageId' --output text)
+          
+          echo "Sharing the AMI with DEMO account..."
+          aws ec2 modify-image-attribute --image-id $AMI_ID --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
+
+          echo "Fetching snapshot ID..."
+          SNAPSHOT_ID=$(aws ec2 describe-images --image-ids $AMI_ID --query 'Images[0].BlockDeviceMappings[0].Ebs.SnapshotId' --output text)
+
+          echo "Sharing the snapshot with DEMO account..."
+          aws ec2 modify-snapshot-attribute --snapshot-id $SNAPSHOT_ID --attribute createVolumePermission --operation-type add --user-ids ${{ secrets.DEMO_ACCOUNT_ID }}
+
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
