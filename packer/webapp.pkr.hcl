@@ -92,7 +92,8 @@ build {
   // Install and configure CloudWatch Agent
   provisioner "shell" {
     inline = [
-      "mkdir -p /opt/aws/amazon-cloudwatch-agent/etc"
+      "mkdir -p /opt/aws/amazon-cloudwatch-agent/etc",
+      "sudo chown -R ubuntu:ubuntu /opt/aws/amazon-cloudwatch-agent"
     ]
   }
 
