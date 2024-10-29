@@ -1,0 +1,38 @@
+{
+    "agent": {
+      "metrics_collection_interval": 60,
+      "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+    },
+    "metrics": {
+      "namespace": "EC2/Custom",
+      "metrics_collected": {
+        "statsd": {},
+        "disk": {
+          "measurement": [
+            {"name": "disk_used_percent", "rename": "DISK_USED_PERCENT", "unit": "Percent"}
+          ],
+          "resources": ["*"],
+          "ignore_file_system_types": ["sysfs", "devtmpfs"]
+        },
+        "mem": {
+          "measurement": [
+            {"name": "mem_used_percent", "unit": "Percent"}
+          ]
+        }
+      }
+    },
+    "logs": {
+      "logs_collected": {
+        "files": {
+          "collect_list": [
+            {
+              "file_path": "/var/log/syslog",
+              "log_group_name": "EC2Logs",
+              "log_stream_name": "{instance_id}"
+            }
+          ]
+        }
+      }
+    }
+  }
+  
