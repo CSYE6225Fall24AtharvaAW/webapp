@@ -90,22 +90,17 @@ build {
   }
 
   // Install and configure CloudWatch Agent
-  provisioner "shell" {
-    inline = [
-      "wget https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm",
-      "sudo rpm -U ./amazon-cloudwatch-agent.rpm"
-    ]
-  }
-
   provisioner "file" {
     source      = "./cloudwatch-config.json"
-    destination = "/opt/aws/amazon-cloudwatch-agent/bin/config.json"
+    destination = "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
   }
 
   provisioner "shell" {
     inline = [
+      "wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb",
+      "sudo dpkg -i ./amazon-cloudwatch-agent.deb",
       "sudo systemctl enable amazon-cloudwatch-agent",
-      "sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json"
+      "sudo systemctl start amazon-cloudwatch-agent"
     ]
   }
 
