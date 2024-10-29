@@ -58,7 +58,7 @@ build {
       "sudo groupadd -f csye6225",
       "sudo useradd -g csye6225 -M -s /usr/sbin/nologin csye6225",
       "sudo mkdir -p /home/csye6225/webapp/app",
-      "sudo chown -R csye6225:csye6225 /home/csye6225/webapp", // Allow Packer to upload files
+      "sudo chown -R ubuntu:csye6225 /home/csye6225/webapp", // Allow Packer to upload files
       "sudo chmod -R 775 /home/csye6225/webapp"              // Ensure write permissions for the group
     ]
   }
@@ -106,6 +106,14 @@ build {
     inline = [
       "sudo systemctl enable amazon-cloudwatch-agent",
       "sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json"
+    ]
+  }
+
+  provisioner "shell" {
+    inline = [
+      "sudo mkdir -p /home/csye6225/webapp/app",
+      "sudo chown -R csye6225:csye6225 /home/csye6225/webapp",
+      "sudo chmod -R 775 /home/csye6225/webapp/app"
     ]
   }
 }
