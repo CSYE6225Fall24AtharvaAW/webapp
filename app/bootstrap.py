@@ -3,7 +3,7 @@ import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
-from .database import Base, engine
+from app.database import Base, engine
 from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import NoCredentialsError
