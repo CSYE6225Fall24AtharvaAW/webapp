@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 import uuid
 import os
 from dotenv import load_dotenv
-from app.bootstrap import statsd_client, s3_client
+from app.metrics import statsd_client
 from time import time
 
 load_dotenv()
@@ -189,7 +189,7 @@ async def delete_image(
         s3_client.delete_object(Bucket=image.bucket_name, Key=image.object_key)
         duration = time() - start_time
         statsd_client.timing("s3.delete_time", duration * 1000)
-        
+
         # Delete metadata from the database
         await session.delete(image)
         await session.commit()

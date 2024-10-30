@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from time import time
-from app.bootstrap import bootstrap_database, statsd_client
+from app.bootstrap import bootstrap_database
+from app.metrics import statsd_client
 from app.routes.healthRoutes import router as health_router
 from app.routes.userRoutes import router as user_router
 

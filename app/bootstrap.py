@@ -1,5 +1,4 @@
 import os
-import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
@@ -7,10 +6,7 @@ from app.database import Base, engine
 from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import NoCredentialsError
-from statsd import StatsClient
-
-# Initialize StatsD client
-statsd_client = StatsClient(host='0.0.0.0', port=8125, prefix='fastapi_app')
+from app.metrics import statsd_client
 
 
 

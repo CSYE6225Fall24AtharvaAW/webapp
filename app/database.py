@@ -5,7 +5,7 @@ from fastapi import Depends
 import os
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
-from app.bootstrap import statsd_client
+from app.metrics import statsd_client
 from time import time
 
 load_dotenv()
