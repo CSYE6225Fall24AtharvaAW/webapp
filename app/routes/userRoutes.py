@@ -1,12 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
-from app.models.user import User
+from app.models.user import User,Image
 from app.schemas.userSchemas import UserCreate, UserUpdate, UserResponse
 from app.database import get_db
+from app.bootstrap import get_s3_client
 from passlib.context import CryptContext
+import uuid
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+bucket_name = os.getenv("BUCKET_NAME")
 
 # Create security object for basic auth
 security = HTTPBasic()
@@ -48,7 +56,8 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db))
                             account_created=new_user.account_created,
                             account_updated=new_user.account_updated)
 
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        print(str(e))
         raise HTTPException(status_code=503, detail="Database error occurred")
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -112,3 +121,72 @@ async def get_user(user_id: int,
     
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="Database error occurred")
+
+@router.post("/upload-image/{user_id}")
+async def upload_image(
+    user_id: int,
+    credentials: HTTPBasicCredentials = Depends(security),
+    session: AsyncSession = Depends(get_db),
+    file: UploadFile = File(...)
+):
+    # Authenticate the user
+    authenticated_user = await authenticate_user(credentials, session)
+
+    # Check if the authenticated user is the same as the one uploading the image
+    if authenticated_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not authorized to upload an image for this user.")
+
+    s3_client = get_s3_client()
+    file_extension = file.filename.split(".")[-1]
+    if file_extension not in ["png", "jpg", "jpeg"]:
+        raise HTTPException(status_code=400, detail="Unsupported file format.")
+
+    object_key = f"{user_id}/{uuid.uuid4()}.{file_extension}"
+    try:
+        s3_client.upload_fileobj(file.file, bucket_name, object_key)
+        image_url = f"https://{bucket_name}.s3.amazonaws.com/{object_key}"
+        
+        # Save metadata to the database
+        image = Image(user_id=user_id, image_url=image_url, bucket_name=bucket_name, object_key=object_key)
+        session.add(image)
+        await session.commit()
+        return {"message": "Image uploaded successfully", "url": image_url}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Database error occurred")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail="An error occurred while uploading the image.")
+
+@router.delete("/delete-image/{user_id}/{image_id}")
+async def delete_image(
+    user_id: int,
+    image_id: int,
+    credentials: HTTPBasicCredentials = Depends(security),
+    session: AsyncSession = Depends(get_db)
+):
+    # Authenticate the user
+    authenticated_user = await authenticate_user(credentials, session)
+
+    # Check if the authenticated user is the same as the one deleting the image
+    if authenticated_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not authorized to delete this image.")
+
+    s3_client = get_s3_client()
+    try:
+        # Find the image metadata in the database
+        result = await session.execute(select(Image).where(Image.id == image_id, Image.user_id == user_id))
+        image = result.scalar_one_or_none()
+        if not image:
+            raise HTTPException(status_code=404, detail="Image not found or you do not have permission to delete this image.")
+        
+        # Delete from S3
+        s3_client.delete_object(Bucket=image.bucket_name, Key=image.object_key)
+        
+        # Delete metadata from the database
+        await session.delete(image)
+        await session.commit()
+        return {"message": "Image deleted successfully"}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Database error occurred")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An error occurred while deleting the image.")

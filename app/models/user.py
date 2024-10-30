@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
 from app.database import Base
+from sqlalchemy.orm import relationship
 
 class User(Base):
     __tablename__ = 'users'
@@ -10,3 +11,18 @@ class User(Base):
     last_name = Column(String)
     account_created = Column(DateTime, default=func.now())
     account_updated = Column(DateTime, onupdate=func.now())
+
+    # Define the images relationship
+    images = relationship("Image", back_populates="user")
+
+class Image(Base):
+    __tablename__ = "images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    image_url = Column(String, nullable=False)
+    bucket_name = Column(String, nullable=False)
+    object_key = Column(String, nullable=False)
+    upload_date = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="images")
