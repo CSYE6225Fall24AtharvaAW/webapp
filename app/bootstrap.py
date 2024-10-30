@@ -5,6 +5,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 from .database import Base, engine
 from dotenv import load_dotenv  # Ensure this import is present
+# bootstrap.py
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+
 
 load_dotenv()
 
@@ -43,4 +48,7 @@ async def bootstrap_database():
     except Exception as e:
         print(f"Error during database creation: {e}")
     await create_tables()
+
+def get_s3_client():
+    return boto3.client("s3")  # IAM roles assigned to the EC2 instance will be used for authentication.
 
