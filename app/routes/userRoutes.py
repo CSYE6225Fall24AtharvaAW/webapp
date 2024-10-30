@@ -11,6 +11,8 @@ from passlib.context import CryptContext
 import uuid
 import os
 from dotenv import load_dotenv
+from app.metrics import statsd_client
+from time import time
 
 load_dotenv()
 
@@ -143,7 +145,10 @@ async def upload_image(
 
     object_key = f"{user_id}/{uuid.uuid4()}.{file_extension}"
     try:
+        start_time = time()
         s3_client.upload_fileobj(file.file, bucket_name, object_key)
+        duration = time() - start_time
+        statsd_client.timing("s3.upload_time", duration * 1000)
         image_url = f"https://{bucket_name}.s3.amazonaws.com/{object_key}"
         
         # Save metadata to the database
@@ -155,7 +160,7 @@ async def upload_image(
         raise HTTPException(status_code=503, detail="Database error occurred")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500, detail="An error occurred while uploading the image.")
+        raise HTTPException(status_code=503, detail="An error occurred while uploading the image.")
 
 @router.delete("/delete-image/{user_id}/{image_id}")
 async def delete_image(
@@ -180,8 +185,11 @@ async def delete_image(
             raise HTTPException(status_code=404, detail="Image not found or you do not have permission to delete this image.")
         
         # Delete from S3
+        start_time = time()
         s3_client.delete_object(Bucket=image.bucket_name, Key=image.object_key)
-        
+        duration = time() - start_time
+        statsd_client.timing("s3.delete_time", duration * 1000)
+
         # Delete metadata from the database
         await session.delete(image)
         await session.commit()
@@ -189,4 +197,4 @@ async def delete_image(
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="Database error occurred")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="An error occurred while deleting the image.")
+        raise HTTPException(status_code=503, detail="An error occurred while deleting the image.")

@@ -1,13 +1,12 @@
 import os
-import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
-from .database import Base, engine
-from dotenv import load_dotenv  # Ensure this import is present
-# bootstrap.py
+from app.database import Base, engine
+from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import NoCredentialsError
+from app.metrics import statsd_client
 
 
 
