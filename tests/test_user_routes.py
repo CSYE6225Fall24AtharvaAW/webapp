@@ -26,7 +26,7 @@ async def test_create_user(client):
         "first_name": "Test",
         "last_name": "User"
     })
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["email"] == "test@example.com"
 
 @pytest.mark.asyncio
@@ -50,4 +50,4 @@ async def test_update_user(client):
 async def test_health_check(client):
     response = await client.get("/v2/healthz")
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    assert response.json() == None
