@@ -145,33 +145,37 @@ async def upload_image(
     file_hash = hashlib.sha256(file_content).hexdigest()
     await file.seek(0)  # Reset file pointer to beginning for upload
 
-    # Retrieve existing image URLs for the user to check duplicates
-    result = await session.execute(select(Image.image_url).where(Image.user_id == authenticated_user.id))
-    existing_images = result.scalars().all()
+    # Retrieve existing object keys for the user to check duplicates
+    result = await session.execute(select(Image.object_key).where(Image.user_id == authenticated_user.id))
+    existing_object_keys = result.scalars().all()
 
-    # Check if any existing image URL matches the hash of the new file content
-    for image_url in existing_images:
-        # Download the existing image from S3 to calculate its hash
-        existing_file_obj = s3_client.get_object(Bucket=bucket_name, Key=image_url.split(f"{bucket_name}/")[-1])
-        existing_file_content = existing_file_obj['Body'].read()
-        existing_file_hash = hashlib.sha256(existing_file_content).hexdigest()
+    # Check each existing image in S3 to see if it matches the uploaded file's hash
+    for object_key in existing_object_keys:
+        try:
+            # Fetch the existing file from S3
+            existing_file_obj = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+            existing_file_content = existing_file_obj['Body'].read()
+            existing_file_hash = hashlib.sha256(existing_file_content).hexdigest()
 
-        if file_hash == existing_file_hash:
-            raise HTTPException(status_code=409, detail="Image already exists.")
+            if file_hash == existing_file_hash:
+                raise HTTPException(status_code=409, detail="Image already exists.")
+        except s3_client.exceptions.NoSuchKey:
+            # Skip if the object does not exist in S3
+            continue
 
-    # Generate a unique object key for S3
-    object_key = f"{authenticated_user.id}/{uuid.uuid4()}.{file_extension}"
+    # Generate a new unique object key for the new upload
+    new_object_key = f"{authenticated_user.id}/{uuid.uuid4()}.{file_extension}"
 
     try:
         # Upload to S3
         start_time = time()
-        s3_client.upload_fileobj(file.file, bucket_name, object_key)
+        s3_client.upload_fileobj(file.file, bucket_name, new_object_key)
         duration = time() - start_time
         statsd_client.timing("s3.upload_time", duration * 1000)
-        image_url = f"https://{bucket_name}.s3.amazonaws.com/{object_key}"
+        image_url = f"https://{bucket_name}.s3.amazonaws.com/{new_object_key}"
 
         # Save metadata to the database
-        image = Image(user_id=authenticated_user.id, image_url=image_url, bucket_name=bucket_name, object_key=object_key)
+        image = Image(user_id=authenticated_user.id, image_url=image_url, bucket_name=bucket_name, object_key=new_object_key)
         session.add(image)
         await session.commit()
 
