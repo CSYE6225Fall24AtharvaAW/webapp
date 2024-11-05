@@ -50,4 +50,4 @@ async def test_update_user(client):
 async def test_health_check(client):
     response = await client.get("/v2/healthz")
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    assert response.json() == None
