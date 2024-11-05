@@ -20,3 +20,10 @@ class UserResponse(BaseModel):
     last_name: str
     account_created: datetime
     account_updated: Optional[datetime]
+
+class ImageResponse(BaseModel):
+    file_name: str
+    id: str
+    url: str
+    upload_date: str
+    user_id: str
