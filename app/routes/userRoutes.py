@@ -178,12 +178,12 @@ async def upload_image(
         image = Image(user_id=authenticated_user.id, image_url=image_url, bucket_name=bucket_name, object_key=new_object_key)
         session.add(image)
         await session.commit()
+        await session.refresh(image)  # Refresh the instance to get the auto-generated ID
 
-        return {"message": "Image uploaded successfully", "url": image_url}
+        return {"message": "Image uploaded successfully", "id": image.id, "url": image_url}
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="Database error occurred")
     except Exception as e:
-        print(str(e))
         raise HTTPException(status_code=503, detail="An error occurred while uploading the image.")
 
 
