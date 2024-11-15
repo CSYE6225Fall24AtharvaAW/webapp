@@ -10,9 +10,15 @@ from app.bootstrap import get_s3_client
 from passlib.context import CryptContext
 import uuid
 import os
+import json
+import boto3
+import logging
+import hashlib
 from dotenv import load_dotenv
 from app.metrics import statsd_client
 from time import time
+from itsdangerous import URLSafeTimedSerializer
+import secrets
 
 load_dotenv()
 
@@ -23,6 +29,17 @@ security = HTTPBasic()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Validate required environment variables
+required_env_vars = ["AWS_REGION", "BASE_URL", "SNS_TOPIC_ARN", "SECRET_KEY", "TOKEN_MAX_AGE"]
+for var in required_env_vars:
+    if not os.getenv(var):
+        raise RuntimeError(f"Missing required environment variable: {var}")
+
+serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY"))
 async def authenticate_user(credentials: HTTPBasicCredentials, session: AsyncSession):
     try:
         result = await session.execute(select(User).where(User.email == credentials.username))
@@ -34,33 +51,104 @@ async def authenticate_user(credentials: HTTPBasicCredentials, session: AsyncSes
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Basic"}
             )
+        if not user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account not verified. Please complete email verification.",
+            )
         return user
-
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error during authentication: {e}")
         raise HTTPException(status_code=500, detail="Database error occurred")
+
+@router.get("/verify")
+async def verify_user(user: str, token: str, session: AsyncSession = Depends(get_db)):
+    try:
+        
+        # Decode the token
+        token_max_age = int(os.getenv("TOKEN_MAX_AGE", "120"))  # Default to 120 seconds if not set
+        data = serializer.loads(token, salt="email-verification-salt", max_age=token_max_age)
+
+        if data["email"] != user:
+            raise HTTPException(status_code=400, detail="Invalid token or user mismatch")
+
+        # Fetch the user from the database
+        result = await session.execute(select(User).where(User.email == user))
+        db_user = result.scalar_one_or_none()
+
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Update the user's verification status
+        db_user.is_verified = True
+        await session.commit()
+
+        return {"message": "Email successfully verified"}
+
+    except Exception as e:
+        logger.error(f"Verification failed: {e}")
+        raise HTTPException(status_code=400, detail="Verification failed")
 
 
 @router.post("/", response_model=UserResponse, status_code=201)
 async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db)):
     try:
+        # Check if the email already exists
         existing_user = await session.execute(select(User).where(User.email == user.email))
         if existing_user.scalar() is not None:
             raise HTTPException(status_code=400, detail="Email already exists")
 
+        # Hash the password
         hashed_password = pwd_context.hash(user.password)
-        new_user = User(email=user.email, hashed_password=hashed_password,
-                        first_name=user.first_name, last_name=user.last_name)
+
+        # Create a new user
+        new_user = User(
+            email=user.email,
+            hashed_password=hashed_password,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            is_verified=False,
+        )
 
         session.add(new_user)
         await session.commit()
-        return UserResponse(email=new_user.email, first_name=new_user.first_name,
-                            last_name=new_user.last_name,
-                            account_created=new_user.account_created,
-                            account_updated=new_user.account_updated)
+
+        # Generate the token for email verification
+        token = serializer.dumps({"email": new_user.email}, salt="email-verification-salt")
+        verification_link = f"https://{os.getenv('BASE_URL')}/verify?user={new_user.email}&token={token}"
+
+        # Configure the SNS client
+        sns_client = boto3.client("sns", region_name=os.getenv("AWS_REGION"))
+
+        sns_message = {
+            "email": new_user.email,
+            "verification_link": verification_link,
+        }
+
+        # Publish the verification message
+        try:
+            sns_client.publish(
+                TopicArn=os.getenv("SNS_TOPIC_ARN"),
+                Message=json.dumps(sns_message),
+                Subject="Email Verification Required"
+            )
+        except boto3.exceptions.Boto3Error as e:
+            logger.error(f"Failed to publish SNS message: {e}")
+            raise HTTPException(status_code=500, detail="Could not send verification email")
+
+        return UserResponse(
+            email=new_user.email,
+            first_name=new_user.first_name,
+            last_name=new_user.last_name,
+            account_created=new_user.account_created,
+            account_updated=new_user.account_updated,
+        )
 
     except SQLAlchemyError as e:
-        print(str(e))
+        logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
+    finally:
+        await session.close()
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(user_id: int, user_update: UserUpdate, 
@@ -95,7 +183,8 @@ async def update_user(user_id: int, user_update: UserUpdate,
                             account_created=user.account_created,
                             account_updated=user.account_updated)
 
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=200)
@@ -121,10 +210,9 @@ async def get_user(user_id: int,
                             account_created=user.account_created,
                             account_updated=user.account_updated)
     
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
-
-import hashlib
 
 @router.post("/image", status_code=201)
 async def upload_image(
@@ -181,9 +269,11 @@ async def upload_image(
         await session.refresh(image)  # Refresh the instance to get the auto-generated ID
 
         return {"message": "Image uploaded successfully", "id": image.id, "url": image_url}
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
     except Exception as e:
+        logger.error(f"An error occurred while uploading the image: {e}")
         raise HTTPException(status_code=503, detail="An error occurred while uploading the image.")
 
 
@@ -216,9 +306,11 @@ async def delete_image(
         await session.delete(image)
         await session.commit()
         return {"message": "Image deleted successfully"}
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
     except Exception as e:
+        logger.error(f"An error occurred while deleting the image: {e}")
         raise HTTPException(status_code=503, detail="An error occurred while deleting the image.")
 
 @router.get("/image/{image_id}", response_model=ImageResponse)
@@ -250,7 +342,9 @@ async def get_image(
             user_id = str(image.user_id)
         )
 
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
     except Exception as e:
+        logger.error(f"An error occurred while retrieving the image: {e}")
         raise HTTPException(status_code=503, detail="An error occurred while retrieving the image.")
