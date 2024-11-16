@@ -31,7 +31,7 @@ async def test_create_user(client):
     # Generate the token for email verification
     serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY"))
     token = serializer.dumps({"email": "test@example.com"}, salt="email-verification-salt")
-    verify = client.get(f"/v2/users/verify?user=test@example.com&token={token}")\
+    verify = await client.get(f"/v2/users/verify?user=test@example.com&token={token}")\
     
     assert response.status_code == 201
     assert response.json()["email"] == "test@example.com"
