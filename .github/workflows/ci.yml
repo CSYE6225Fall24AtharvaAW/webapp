@@ -48,6 +48,8 @@ jobs:
           SECRET_KEY: ${{secrets.TEST_EMAIL_SECRET_KEY}} 
           BASE_URL: "demo.atharvawaranashiwar.me"
           AWS_REGION: ${{secrets.AWS_REGION}}
+          SNS_TOPIC_ARN: ${{secrets.SNS_TOPIC_ARN}}
+          TOKEN_MAX_AGE: 180
 
       - name: Clean up
         if: always()
