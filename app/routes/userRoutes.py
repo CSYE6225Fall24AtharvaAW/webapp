@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 
 # Validate required environment variables
 required_env_vars = ["AWS_REGION", "BASE_URL", "SNS_TOPIC_ARN", "SECRET_KEY", "TOKEN_MAX_AGE"]
-for var in required_env_vars:
-    if not os.getenv(var):
-        raise RuntimeError(f"Missing required environment variable: {var}")
 
 serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY"))
 async def authenticate_user(credentials: HTTPBasicCredentials, session: AsyncSession):
