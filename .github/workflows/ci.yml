@@ -41,10 +41,22 @@ jobs:
       - name: Set Database Environment Variable
         run: echo "DATABASE_URL=postgresql+asyncpg://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Run Tests
         run: pytest tests/
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          SECRET_KEY: ${{secrets.TEST_EMAIL_SECRET_KEY}} 
+          BASE_URL: "demo.atharvawaranashiwar.me"
+          AWS_REGION: ${{secrets.AWS_REGION}}
+          SNS_TOPIC_ARN: ${{secrets.SNS_TOPIC_ARN}}
+          TOKEN_MAX_AGE: 180
 
       - name: Clean up
         if: always()

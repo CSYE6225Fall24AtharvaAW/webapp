@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, Boolean
 from app.database import Base
 from sqlalchemy.orm import relationship
 
@@ -11,6 +11,7 @@ class User(Base):
     last_name = Column(String)
     account_created = Column(DateTime, default=func.now())
     account_updated = Column(DateTime, onupdate=func.now())
+    is_verified = Column(Boolean, default=False)
 
     # Define the images relationship
     images = relationship("Image", back_populates="user")

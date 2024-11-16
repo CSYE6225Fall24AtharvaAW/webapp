@@ -6,6 +6,8 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app  # Import your FastAPI app
 from app.database import get_db
 from app.models.user import Base
+from itsdangerous import URLSafeTimedSerializer
+import os
 
 @pytest.fixture
 async def client(async_session: AsyncSession):
@@ -26,8 +28,15 @@ async def test_create_user(client):
         "first_name": "Test",
         "last_name": "User"
     })
+    # Generate the token for email verification
+    serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY"))
+    token = serializer.dumps({"email": "test@example.com"}, salt="email-verification-salt")
+    verify = await client.get(f"/v2/users/verify?user=test@example.com&token={token}")\
+    
     assert response.status_code == 201
     assert response.json()["email"] == "test@example.com"
+    assert verify.status_code == 200
+    assert verify.json()["message"] == "Email successfully verified"
 
 @pytest.mark.asyncio
 async def test_get_user(client):
