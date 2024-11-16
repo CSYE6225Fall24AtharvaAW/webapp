@@ -45,6 +45,9 @@ jobs:
         run: pytest tests/
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          SECRET_KEY: ${{secrets.TEST_EMAIL_SECRET_KEY}} 
+          BASE_URL: "demo.atharvawaranashiwar.me"
+          AWS_REGION: ${{secrets.AWS_REGION}}
 
       - name: Clean up
         if: always()
