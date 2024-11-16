@@ -58,7 +58,7 @@ async def authenticate_user(credentials: HTTPBasicCredentials, session: AsyncSes
         logger.error(f"Database error during authentication: {e}")
         raise HTTPException(status_code=500, detail="Database error occurred")
 
-@router.get("/verify")
+@router.get("/verify", status_code=200)
 async def verify_user(user: str, token: str, session: AsyncSession = Depends(get_db)):
     try:
         
@@ -112,7 +112,7 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db))
 
         # Generate the token for email verification
         token = serializer.dumps({"email": new_user.email}, salt="email-verification-salt")
-        verification_link = f"https://{os.getenv('BASE_URL')}/verify?user={new_user.email}&token={token}"
+        verification_link = f"http://{os.getenv('BASE_URL')}/v2/users/verify?user={new_user.email}&token={token}"
 
         # Configure the SNS client
         sns_client = boto3.client("sns", region_name=os.getenv("AWS_REGION"))
@@ -131,7 +131,7 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db))
             )
         except boto3.exceptions.Boto3Error as e:
             logger.error(f"Failed to publish SNS message: {e}")
-            raise HTTPException(status_code=500, detail="Could not send verification email")
+            raise HTTPException(status_code=503, detail="Could not send verification email")
 
         return UserResponse(
             email=new_user.email,
