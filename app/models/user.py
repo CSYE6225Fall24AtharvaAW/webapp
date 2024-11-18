@@ -27,3 +27,11 @@ class Image(Base):
     upload_date = Column(DateTime, default=func.now())
 
     user = relationship("User", back_populates="images")
+
+class Email_logs(Base):
+    __tablename__ = "email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False)
+    sent_at = Column(DateTime, default=func.now())
+    verification_link = Column(String, nullable=False)
