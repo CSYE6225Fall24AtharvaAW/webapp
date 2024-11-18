@@ -18,7 +18,10 @@ from dotenv import load_dotenv
 from app.metrics import statsd_client
 from time import time
 from itsdangerous import URLSafeTimedSerializer
-import secrets
+# Database logging function
+from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+from sqlalchemy.sql import text
 
 load_dotenv()
 
@@ -57,6 +60,25 @@ async def authenticate_user(credentials: HTTPBasicCredentials, session: AsyncSes
     except SQLAlchemyError as e:
         logger.error(f"Database error during authentication: {e}")
         raise HTTPException(status_code=500, detail="Database error occurred")
+
+
+
+logger = logging.getLogger(__name__)
+
+async def log_email_in_db(email, verification_link, session: AsyncSession = Depends(get_db)):
+    try:
+        query = text("""
+            INSERT INTO email_logs (email, verification_link, sent_at)
+            VALUES (:email, :verification_link, NOW())
+        """)
+        # Execute the query asynchronously
+        await session.execute(query, {"email": email, "verification_link": verification_link})
+        await session.commit()  # Persist changes to the database
+        logger.info(f"Logged email for {email}")
+    except Exception as e:
+        logger.error(f"Failed to log email for {email}: {e}")
+        raise HTTPException(status_code=503, detail="Failed to log email")
+
 
 @router.get("/verify", status_code=200)
 async def verify_user(user: str, token: str, session: AsyncSession = Depends(get_db)):
@@ -114,6 +136,14 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db))
         token = serializer.dumps({"email": new_user.email}, salt="email-verification-salt")
         verification_link = f"http://{os.getenv('BASE_URL')}/v2/users/verify?user={new_user.email}&token={token}"
 
+        # Log the email and verification link in the database
+        try:
+            await log_email_in_db(new_user.email, verification_link, session)
+        except Exception as e:
+            logger.error(f"Failed to log email for {new_user.email}: {e}")
+            # Decide if this failure should impact the user creation flow
+            raise HTTPException(status_code=503, detail="Failed to log email")
+
         # Configure the SNS client
         sns_client = boto3.client("sns", region_name=os.getenv("AWS_REGION"))
 
@@ -144,8 +174,6 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db))
     except SQLAlchemyError as e:
         logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
-    finally:
-        await session.close()
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(user_id: int, user_update: UserUpdate, 
