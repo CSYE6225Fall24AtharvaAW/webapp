@@ -52,10 +52,10 @@ jobs:
         run: pytest tests/
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-          SECRET_KEY: ${{secrets.TEST_EMAIL_SECRET_KEY}} 
+          SECRET_KEY: ${{ secrets.TEST_EMAIL_SECRET_KEY }}
           BASE_URL: "demo.atharvawaranashiwar.me"
-          AWS_REGION: ${{secrets.AWS_REGION}}
-          SNS_TOPIC_ARN: ${{secrets.SNS_TOPIC_ARN}}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SNS_TOPIC_ARN: ${{ secrets.SNS_TOPIC_ARN }}
           TOKEN_MAX_AGE: 180
 
       - name: Clean up
@@ -86,11 +86,26 @@ jobs:
                        -var 'ami_users=["${{ secrets.AMI_USERS }}"]' \
                        packer/webapp.pkr.hcl
 
+      - name: Fetch the Latest AMI ID
+        id: fetch-ami
+        run: |
+          echo "Fetching the latest AMI ID..."
+          AMI_ID=$(aws ec2 describe-images \
+            --owners self \
+            --filters "Name=name,Values=webapp-ami*" \
+            --query 'Images | sort_by(@, &CreationDate)[-1].ImageId' \
+            --output text)
+
+          if [[ -z "$AMI_ID" || "$AMI_ID" == "None" ]]; then
+            echo "No AMI found with the given filter. Exiting."
+            exit 1
+          fi
+
+          echo "Latest AMI ID: $AMI_ID"
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
       - name: Share AMI with DEMO account
         run: |
-          echo "Fetching AMI ID..."
-          AMI_ID=$(aws ec2 describe-images --owners self --filters "Name=name,Values=webapp-ami*" --query 'Images[0].ImageId' --output text)
-          
           echo "Sharing the AMI with DEMO account..."
           aws ec2 modify-image-attribute --image-id $AMI_ID --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
 
@@ -103,20 +118,16 @@ jobs:
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # New Tasks
-      # New Tasks for Demo Account
       - name: Configure AWS Credentials for Demo Account
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.DEMO_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Create New Launch Template Version
         id: create-launch-template
         run: |
-          echo "Fetching AMI ID..."
-          AMI_ID=$(aws ec2 describe-images --owners self --filters "Name=name,Values=webapp-ami*" --query 'Images[0].ImageId' --output text)
-
           echo "Creating new launch template version..."
           LAUNCH_TEMPLATE_VERSION=$(aws ec2 create-launch-template-version \
             --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} \

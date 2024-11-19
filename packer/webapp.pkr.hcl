@@ -36,9 +36,9 @@ source "amazon-ebs" "webapp" {
   region        = var.aws_region
   source_ami    = var.source_ami
   instance_type = var.instance_type
-  ami_name      = "webapp-ami"
+  ami_name      = "webapp-ami-{{timestamp}}"
   ssh_username  = "ubuntu"
-  ami_users     = var.ami_users // Make the AMI private
+  ami_users     = var.ami_users
 }
 
 // Provisioners to install requirements and application
