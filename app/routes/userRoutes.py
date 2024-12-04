@@ -175,6 +175,10 @@ async def create_user(user: UserCreate, session: AsyncSession = Depends(get_db))
         logger.error(f"Database error occurred: {e}")
         raise HTTPException(status_code=503, detail="Database error occurred")
 
+@router.get("/CICD")
+async def get_cicd():
+    return {"message": "CICD"}  
+
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(user_id: int, user_update: UserUpdate, 
                       session: AsyncSession = Depends(get_db), 
